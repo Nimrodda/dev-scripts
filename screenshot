@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+SCREENSHOT_DIR=~/Downloads/Screenshots
+if [ ! -z "$1" ]; then
+    SCREENSHOT_FILENAME="$1"
+else    
+    SCREENSHOT_FILENAME=screenshot-$TIMESTAMP.png
+fi
+
+DEVICE_PATH=/sdcard
+mkdir -p $SCREENSHOT_DIR
+pushd $SCREENSHOT_DIR
+echo Taking screenshot
+adb shell screencap -p $DEVICE_PATH/$SCREENSHOT_FILENAME
+echo Copying screenshot to $SCREENSHOT_DIR
+adb pull $DEVICE_PATH/$SCREENSHOT_FILENAME
+adb shell rm $DEVICE_PATH/$SCREENSHOT_FILENAME
+echo Resizing screenshot
+convert -resize 25% $SCREENSHOT_FILENAME $SCREENSHOT_FILENAME
+open $SCREENSHOT_DIR/
+echo Done!
+popd

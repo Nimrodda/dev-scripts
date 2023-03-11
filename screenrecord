@@ -1,0 +1,27 @@
+#!/bin/sh
+set -e
+
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+SCREENRECORD_DIR=~/Downloads/Screenshots
+if [ ! -z "$1" ]; then
+    SCREENRECORD_FILENAME="$1"
+else    
+    SCREENRECORD_FILENAME=screenrecord-$TIMESTAMP.mp4
+fi
+
+DEVICE_PATH=/sdcard
+mkdir -p $SCREENRECORD_DIR
+pushd $SCREENRECORD_DIR
+echo Recording screen...
+adb shell screenrecord --bit-rate 4M --size 1280x720 $DEVICE_PATH/$SCREENRECORD_FILENAME &
+PID=$!
+read -p "Press [Enter] to stop"
+kill $PID
+echo Copying screen recording to $SCREENRECORD_DIR
+sleep 3
+adb pull $DEVICE_PATH/$SCREENRECORD_FILENAME
+adb shell rm $DEVICE_PATH/$SCREENRECORD_FILENAME
+trap "kill 0" SIGINT SIGTERM EXIT
+open $SCREENRECORD_DIR/
+echo Done!
+popd
