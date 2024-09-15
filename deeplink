@@ -1,4 +1,40 @@
 #!/bin/bash
 
-adb shell am start -a android.intent.action.VIEW -d "$1"
+# Function to list connected devices
+list_devices() {
+    adb devices | grep -w "device" | awk '{print $1}'
+}
 
+# Function to open URL on a specific device
+open_url_on_device() {
+    local device=$1
+    local url=$2
+    adb -s "$device" shell am start -a android.intent.action.VIEW -d "$url"
+}
+
+# Main script
+url=$1
+
+if [ -z "$url" ]; then
+    echo "Usage: $0 <url>"
+    exit 1
+fi
+
+devices=($(list_devices))
+
+if [ ${#devices[@]} -eq 0 ]; then
+    echo "No devices connected."
+    exit 1
+elif [ ${#devices[@]} -eq 1 ]; then
+    open_url_on_device "${devices[0]}" "$url"
+else
+    echo "Multiple devices connected. Please select a device:"
+    select device in "${devices[@]}"; do
+        if [ -n "$device" ]; then
+            open_url_on_device "$device" "$url"
+            break
+        else
+            echo "Invalid selection. Please try again."
+        fi
+    done
+fi
