@@ -1,27 +1,52 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-TIMESTAMP=$(date +"%Y%m%d%H%M%S")
-SCREENRECORD_DIR=~/Downloads/Screenshots
-if [ ! -z "$1" ]; then
-    SCREENRECORD_FILENAME="$1"
-else    
-    SCREENRECORD_FILENAME=screenrecord-$TIMESTAMP.mp4
-fi
+# Function to list connected devices
+list_devices() {
+    adb devices | grep -w "device" | awk '{print $1}'
+}
 
-DEVICE_PATH=/sdcard
-mkdir -p $SCREENRECORD_DIR
-pushd $SCREENRECORD_DIR
-echo Recording screen...
-adb shell screenrecord --bit-rate 4M --size 1280x720 $DEVICE_PATH/$SCREENRECORD_FILENAME &
-PID=$!
-read -p "Press [Enter] to stop"
-kill $PID
-echo Copying screen recording to $SCREENRECORD_DIR
-sleep 3
-adb pull $DEVICE_PATH/$SCREENRECORD_FILENAME
-adb shell rm $DEVICE_PATH/$SCREENRECORD_FILENAME
-trap "kill 0" SIGINT SIGTERM EXIT
-open $SCREENRECORD_DIR/
-echo Done!
-popd
+# Function to open URL on a specific device
+record_video() {
+    local device=$1
+
+    SCREENRECORD_DIR=~/Downloads/Screenshots
+    TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+    SCREENRECORD_FILENAME=screenrecord-$TIMESTAMP.mp4
+    DEVICE_PATH=/sdcard
+    mkdir -p $SCREENRECORD_DIR
+    pushd $SCREENRECORD_DIR
+    echo Recording screen...
+    adb -s "$device" shell screenrecord --bit-rate 4M --size 1280x720 $DEVICE_PATH/$SCREENRECORD_FILENAME &
+    PID=$!
+    read -p "Press [Enter] to stop"
+    kill $PID
+    echo Copying screen recording to $SCREENRECORD_DIR
+    sleep 3
+    adb -s "$device" pull $DEVICE_PATH/$SCREENRECORD_FILENAME
+    adb -s "$device" shell rm $DEVICE_PATH/$SCREENRECORD_FILENAME
+    trap "kill 0" SIGINT SIGTERM EXIT
+    open $SCREENRECORD_DIR/
+    echo Done!
+    popd
+}
+
+# Main script
+devices=($(list_devices))
+
+if [ ${#devices[@]} -eq 0 ]; then
+    echo "No devices connected."
+    exit 1
+elif [ ${#devices[@]} -eq 1 ]; then
+    record_video "${devices[0]}"
+else
+    echo "Multiple devices connected. Please select a device:"
+    select device in "${devices[@]}"; do
+        if [ -n "$device" ]; then
+            record_video "$device"
+            break
+        else
+            echo "Invalid selection. Please try again."
+        fi
+    done
+fi
